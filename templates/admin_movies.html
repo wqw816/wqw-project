@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>电影管理</title>
+    <style>
+        /* 略简单样式 */
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .filter-bar { margin-bottom: 20px; }
+        .filter-bar input, .filter-bar select { margin-right: 10px; }
+        .pagination { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>电影管理</h1>
+    <div class="filter-bar">
+        <form method="get">
+            <input type="text" name="title" placeholder="电影标题" value="{{ title }}">
+            <select name="genre">
+                <option value="">所有类型</option>
+                {% for g in all_genres %}
+                <option value="{{ g }}" {% if genre == g %}selected{% endif %}>{{ g }}</option>
+                {% endfor %}
+            </select>
+            <select name="director">
+                <option value="">所有导演</option>
+                {% for d in all_directors %}
+                <option value="{{ d }}" {% if director == d %}selected{% endif %}>{{ d }}</option>
+                {% endfor %}
+            </select>
+            <select name="actor">
+                <option value="">所有演员</option>
+                {% for a in all_actors %}
+                <option value="{{ a }}" {% if actor == a %}selected{% endif %}>{{ a }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">筛选</button>
+            <a href="/admin/movies">重置</a>
+        </form>
+    </div>
+    <p><a href="/admin/movie/add">添加电影</a></p>
+    <table>
+        <thead>
+            <tr><th>ID</th><th>标题</th><th>类型</th><th>导演</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+        {% for movie in movies %}
+        <tr>
+            <td>{{ movie.id }}</td>
+            <td>{{ movie.title }}</td>
+            <td>{{ movie.genres }}</td>
+            <td>{{ movie.director }}</td>
+            <td>
+                <a href="/admin/movie/edit/{{ movie.id }}">编辑</a>
+                <a href="/admin/movie/delete/{{ movie.id }}" onclick="return confirm('确定删除？')">删除</a>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <div class="pagination">
+        {% if pagination.has_prev %}
+            <a href="{{ url_for('admin_movies', page=pagination.prev_num, title=title, genre=genre, director=director, actor=actor) }}">上一页</a>
+        {% endif %}
+        <span>第 {{ pagination.page }} / {{ pagination.pages }} 页</span>
+        {% if pagination.has_next %}
+            <a href="{{ url_for('admin_movies', page=pagination.next_num, title=title, genre=genre, director=director, actor=actor) }}">下一页</a>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% if movie %}编辑电影{% else %}添加电影{% endif %}</title>
+    <style>
+        /* 整体背景 */
+        body {
+            background: #f0f2f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* 卡片容器 */
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid #e9ecef;
+        }
+
+        /* 按钮 */
+        .btn {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 6px 14px;
+            border-radius: 6px;
+            color: #1f2d3d;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            background: #e9ecef;
+            border-color: #ced4da;
+        }
+        .btn-primary {
+            background: #2c3e50;
+            border-color: #2c3e50;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #1a2a3a;
+        }
+        .btn-danger {
+            background: #dc3545;
+            border-color: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #b02a37;
+        }
+
+        /* 表格 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #edf2f7;
+        }
+        th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        tr:hover {
+            background-color: #f1f5f9;
+        }
+
+        /* 输入框、下拉框 */
+        input, select {
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background: white;
+            font-size: 0.9rem;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #2c3e50;
+            box-shadow: 0 0 0 2px rgba(44,62,80,0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>{% if movie %}编辑电影{% else %}添加电影{% endif %}</h1>
+    <form method="post">
+        <label>标题: <input type="text" name="title" value="{{ movie.title if movie else '' }}" required></label><br>
+        <div class="form-group">
+            <label>类型（可多选）</label><br>
+            {% for genre in all_genres %}
+            <label style="display: inline-block; margin-right: 10px;">
+                <input type="checkbox" name="genres" value="{{ genre }}"
+                    {% if movie and genre in movie.genres.split('|') %}checked{% endif %}>
+                {{ genre }}
+            </label>
+            {% endfor %}
+        </div>
+        <label>导演: <input type="text" name="director" value="{{ movie.director if movie else '' }}"></label><br>
+        <label>主演: <input type="text" name="actors" value="{{ movie.actors if movie else '' }}"></label><br>
+        <label>海报URL: <input type="text" name="poster_url" value="{{ movie.poster_url if movie else '' }}"></label><br>
+        <label>简介:<br><textarea name="overview" rows="5" cols="60">{{ movie.overview if movie else '' }}</textarea></label><br>
+        <button type="submit">保存</button>
+        <a href="{{ url_for('admin') }}">取消</a>
+    </form>
+</body>
+</html>

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍿 轻量级电影推荐系统</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .movie-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .movie-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .movie-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .movie-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+        .movie-genres {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+        .movie-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #ecf0f1;
+            padding-top: 8px;
+            color: #e67e22;
+            font-weight: 500;
+        }
+        .loading {
+            text-align: center;
+            font-size: 1.5rem;
+            color: #95a5a6;
+            padding: 50px;
+        }
+        .error {
+            text-align: center;
+            color: #e74c3c;
+            padding: 50px;
+        }
+        /* 固定右侧导航栏 */
+        .navbar {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        /* 给主容器添加上边距，避免被固定栏遮挡 */
+        .container {
+            margin-top: 60px;  /* 根据导航栏高度调整 */
+        }
+        /* 整体背景 */
+        body {
+            background: #f0f2f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* 卡片容器 */
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid #e9ecef;
+        }
+
+        /* 按钮 */
+        .btn {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 6px 14px;
+            border-radius: 6px;
+            color: #1f2d3d;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .btn:hover {
+            background: #e9ecef;
+            border-color: #ced4da;
+        }
+        .btn-primary {
+            background: #2c3e50;
+            border-color: #2c3e50;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #1a2a3a;
+        }
+        .btn-danger {
+            background: #dc3545;
+            border-color: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #b02a37;
+        }
+
+        /* 表格 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #edf2f7;
+        }
+        th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        tr:hover {
+            background-color: #f1f5f9;
+        }
+
+        /* 输入框、下拉框 */
+        input, select {
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background: white;
+            font-size: 0.9rem;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #2c3e50;
+            box-shadow: 0 0 0 2px rgba(44,62,80,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div style="text-align: center; margin: 20px; font-style: italic; color: #555;">
+    🎬 今日金句：电影让我们的生命延长了三倍。—— 罗杰·伊伯特
+    </div>
+    <div class="container">
+        <h1>🔥 热门电影（按评分人数）</h1>
+        <div class="search-box" style="text-align: center; margin: 20px 0;">
+            <form action="/search" method="get" style="display: inline-block;">
+                <input type="text" name="q" placeholder="仅支持英文电影名搜索" style="width: 250px; padding: 6px;">
+                <button type="submit">搜索</button>
+            </form>
+            <a href="/browse" style="display: inline-block; margin-left: 10px; padding: 6px 12px; background: #e9ecef; border-radius: 4px; text-decoration: none; color: #333;">电影库</a>
+        </div>
+        <p style="text-align: center; font-size: 0.8rem; color: #666;">提示：搜索仅匹配电影英文原名，如需按类型/导演/演员筛选，请进入“电影库”</p>
+        <div id="movie-list" class="movie-grid">
+            <div class="loading">加载中...</div>
+        </div>
+    </div>
+    <div class="navbar">
+        {% if current_user.is_authenticated %}
+            欢迎, {{ current_user.username }} | 
+            <a href="/change_password">修改密码</a> | 
+            <a href="/logout">退出</a>
+        {% else %}
+            <a href="/login">登录</a> | <a href="/register">注册</a>
+        {% endif %}
+    </div>
+    <div id="user-data" data-logged-in="{{ 'true' if logged_in else 'false' }}" style="display: none;"></div>
+    ...
+    <script>
+    const loggedIn = document.getElementById('user-data').dataset.loggedIn === 'true';
+    const baseUrl = loggedIn ? '/recommend_fusion' : '/popular';
+
+    let currentPage = 1;
+    let isLoading = false;
+    let hasMore = true;
+
+    function loadMovies() {
+        if (isLoading || !hasMore) return;
+        isLoading = true;
+        fetch(`${baseUrl}?page=${currentPage}`)
+            .then(response => response.json())
+            .then(data => {
+                const movies = data.popular || data.recommend || [];
+                if (movies.length === 0) {
+                    hasMore = false;
+                    return;
+                }
+                renderMovieCards(movies, document.getElementById('movie-list'), currentPage > 1);
+                hasMore = data.has_next === true;
+                currentPage++;
+                isLoading = false;
+            })
+            .catch(err => {
+                console.error('加载失败', err);
+                isLoading = false;
+            });
+    }
+
+    function renderMovieCards(movies, container, append) {
+        let html = '';
+        movies.forEach(movie => {
+            let imgHtml = '';
+            if (movie.poster_url) {
+                imgHtml = `<img src="${movie.poster_url}" alt="${movie.title}" style="width:100%; height:200px; object-fit:cover;">`;
+            }
+            let link = loggedIn ? `/movie/${movie.id}?src=home` : `/login?next=/movie/${movie.id}`;
+            html += `
+                <a href="${link}" style="text-decoration: none; color: inherit;">
+                    <div class="movie-card">
+                        ${imgHtml}
+                        <div class="movie-title">${movie.title}</div>
+                        <div class="movie-genres">类型：${movie.genres.replace(/\|/g, ' · ')}</div>
+                        ${movie.director ? `<div class="movie-director">导演：${movie.director}</div>` : ''}
+                        <div class="movie-stats">
+                            <span>⭐ 评分次数</span>
+                            <span>${movie.rating_count !== undefined && movie.rating_count !== null ? movie.rating_count : 'N/A'}</span>
+                        </div>
+                    </div>
+                </a>
+            `;
+        });
+        if (append) {
+            container.insertAdjacentHTML('beforeend', html);
+        } else {
+            container.innerHTML = html;
+        }
+    }
+
+    // 滚动监听
+    window.addEventListener('scroll', () => {
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 300) {
+            loadMovies();
+        }
+    });
+
+    // 初始加载
+    loadMovies();
+    </script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+# 虚拟环境
+venv/
+env/
+
+# 模型文件
+*.pkl
+
+# Python缓存
+__pycache__/
+*.pyc
+
+# 所有数据文件
+*.csv
+
+# 导入脚本
+import_*.py
+
+# 批量脚本
+batch_fetch*.py
+download_posters*.py
+
+# 模拟脚本
+mock_users*.py
+
+# 临时文件
+structure.txt
+test_db.py

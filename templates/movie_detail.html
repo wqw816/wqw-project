@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ movie.title }} - 电影详情</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .movie-header { display: flex; gap: 20px; margin-bottom: 30px; }
+        .poster { width: 200px; border-radius: 5px; }
+        .info { flex: 1; }
+        .info h1 { margin-top: 0; }
+        .genres { color: #666; }
+        .section-title { font-size: 1.5rem; margin: 20px 0 10px; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+        .similar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 20px; }
+        .similar-card { background: #fafafa; border-radius: 8px; padding: 10px; text-align: center; transition: transform 0.2s; }
+        .similar-card:hover { transform: translateY(-5px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .similar-card img { width: 100%; height: 200px; object-fit: cover; border-radius: 5px; }
+        .similar-card .title { font-weight: bold; margin: 8px 0 4px; }
+        .similar-card .director { font-size: 0.85rem; color: #555; }
+        .loading { text-align: center; padding: 50px; color: #999; }
+        .error { text-align: center; padding: 50px; color: #e74c3c; }
+        .back-link { display: inline-block; margin-top: 20px; color: #3498db; text-decoration: none; }
+        .movie-overview {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="movie-data" data-movie-id="{{ movie.id }}" style="display: none;"></div>
+    <div id="user-data" data-movie-id="{{ movie.id }}" style="display: none;"></div>
+    <!-- 新增：登录状态 -->
+    <div id="login-state" data-logged-in="{{ 'true' if logged_in else 'false' }}" style="display: none;"></div>
+    <div class="container">
+        <div style="background:yellow; padding:5px;">当前用户类型: {{ user_type }}</div>
+        <div class="movie-header">
+            {% if movie.poster_url %}
+            <img class="poster" src="{{ movie.poster_url }}" alt="{{ movie.title }}">
+            {% else %}
+            <div class="poster" style="background:#ddd; display:flex; align-items:center; justify-content:center; color:#666;">暂无海报</div>
+            {% endif %}
+            <div class="info">
+                <h1>{{ movie.title }}</h1>
+                <p class="genres">类型：{{ movie.genres.replace('|', ' · ') }}</p>
+                {% if movie.director %}
+                <p><strong>导演：</strong>{{ movie.director }}</p>
+                {% endif %}
+                {% if movie.actors %}
+                <p><strong>主演：</strong>{{ movie.actors }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 平均分显示（如果还没加） -->
+        <div class="rating-info">
+            <p><strong>评分：</strong>{{ avg_rating }} / 5 ({{ rating_count }}人评分)</p>
+        </div>
+
+        <!-- 简介区块 -->
+        {% if movie.overview %}
+        <div class="movie-overview">
+            <h3>剧情简介</h3>
+            <p>{{ movie.overview }}</p>
+        </div>
+        {% endif %}
+
+        <!-- 评分表单（登录用户可见） -->
+        {% if current_user.is_authenticated %}
+        <div style="margin-top: 20px;">
+            <h3>给这部电影评分</h3>
+            <form id="rating-form">
+                <input type="hidden" name="movie_id" value="{{ movie.id }}">
+                <label>评分: 
+                    <input type="number" name="rating" step="0.1" min="0.1" max="5" required style="width: 80px;">
+                </label>
+                <small style="color: #666; margin-left: 5px;">0.1~5，可精确到0.1</small>
+                <button type="submit">提交评分</button>
+            </form>
+        </div>
+        {% else %}
+        <p><a href="/login">登录</a>后即可评分</p>
+        {% endif %}
+
+        <!-- 基于内容的推荐（所有用户都显示） -->
+        <h2 class="section-title">相似电影推荐</h2>
+        <div id="similar-movies" class="similar-grid">
+            <div class="loading">加载中...</div>
+        </div>
+
+        <!-- 协同推荐区块（根据用户类型动态显示） -->
+        {% if user_type != 'new' %}
+            <h2 class="section-title" id="collab-title"></h2>
+            <div id="collab-movies" class="similar-grid">
+                <div class="loading">加载中...</div>
+            </div>
+        {% endif %}
+
+        <a class="back-link" href="/">← 返回首页</a>
+    </div>
+
+    <script>
+        const loggedIn = document.getElementById('login-state').dataset.loggedIn === 'true';
+        // 获取当前电影ID
+        const movieId = document.getElementById('movie-data').dataset.movieId;
+        // 从模板获取用户类型（注意用 tojson 避免转义问题）
+        const userType = '{{ user_type }}';
+        console.log('userType 的精确表示:', JSON.stringify(userType));
+        console.log('userType from template:', userType);
+        // 调用相似电影接口（基于内容）
+        fetch(`/similar/${movieId}`)
+            .then(response => response.json())
+            .then(data => {
+                const similar = data.similar;
+                const container = document.getElementById('similar-movies');
+                if (!similar || similar.length === 0) {
+                    container.innerHTML = '<div class="error">暂无相似电影推荐</div>';
+                    return;
+                }
+                let html = '';
+                similar.forEach(m => {
+                    let link = loggedIn ? `/movie/${m.id}?src=recommend` : `/login?next=/movie/${m.id}`;
+                    html += `
+                        <a href="${link}" style="text-decoration: none; color: inherit;">
+                            <div class="similar-card">
+                                <img src="${m.poster_url || '/static/default-poster.jpg'}" alt="${m.title}" onerror="this.src='/static/default-poster.jpg'">
+                                <div class="title">${m.title}</div>
+                                ${m.director ? `<div class="director">${m.director}</div>` : ''}
+                            </div>
+                        </a>
+                    `;
+                });
+                container.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('similar-movies').innerHTML = '<div class="error">加载失败，请稍后重试</div>';
+            });
+
+        // 根据用户类型处理协同推荐
+        if (userType !== 'new') {
+            let collabUrl = '';
+            let titleText = '';
+            if (userType === 'old') {
+                console.log('✅ 进入 old 分支，准备赋值');
+                collabUrl = `/fused_similar/${movieId}`;
+                console.log('collabUrl:', collabUrl);
+                titleText = '猜你喜欢（融合推荐）';
+            } else if (userType === 'implicit') {
+                collabUrl = `/implicit_similar/${movieId}`;
+                titleText = '猜你喜欢（基于点击）';
+            }
+            
+            // 设置标题
+            document.getElementById('collab-title').innerText = titleText;
+            console.log('即将请求的 URL:', collabUrl);
+            console.log('collabUrl type:', typeof collabUrl, 'length:', collabUrl.length, 'value:', collabUrl);
+            // 调用协同推荐接口
+            fetch(collabUrl)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('后端返回的完整数据:', data);          // 新增
+                    const collabMovies = data.collab;  // 统一字段名
+                    console.log('提取的 collabMovies:', collabMovies); // 新增
+                    const container = document.getElementById('collab-movies');
+                    if (!collabMovies || collabMovies.length === 0) {
+                        container.innerHTML = '<div class="error">暂无协同推荐</div>';
+                        return;
+                    }
+                    let html = '';
+                    collabMovies.forEach(m => {
+                        let link = loggedIn ? `/movie/${m.id}?src=recommend` : `/login?next=/movie/${m.id}`;
+                        html += `
+                            <a href="${link}" style="text-decoration: none; color: inherit;">
+                                <div class="similar-card">
+                                    <img src="${m.poster_url || '/static/default-poster.jpg'}" 
+                                        alt="${m.title}" 
+                                        onerror="this.onerror=null; this.src='/static/default-poster.jpg';"
+                                        style="width:100%; height:200px; object-fit:cover;">
+                                    <div class="title">${m.title}</div>
+                                    ${m.director ? `<div class="director">${m.director}</div>` : ''}
+                                </div>
+                            </a>
+                        `;
+                    });
+                    container.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('collab-movies').innerHTML = '<div class="error">加载失败</div>';
+                });
+        }
+        // 评分表单提交处理
+        document.getElementById('rating-form')?.addEventListener('submit', function(e) {
+            e.preventDefault();  // 阻止默认表单提交
+            var formData = new FormData(this);
+            fetch('/rate_movie', {
+                method: 'POST',
+                body: new URLSearchParams(formData)
+            })
+            .then(response => response.text())
+            .then(data => {
+                alert(data);
+                // 刷新页面以更新平均分
+                location.reload();
+            })
+            .catch(err => alert('请求失败'));
+        });
+        // 记录停留时间
+        let stayStartTime = Date.now();
+        let stayReported = false;
+
+        function reportStayDuration() {
+            if (stayReported) return;
+            stayReported = true;
+            const duration = Math.floor((Date.now() - stayStartTime) / 1000); // 秒
+            if (duration < 3) return; // 停留不足3秒忽略
+            // 发送到后端
+            fetch('/record_stay_time', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    movie_id: movieId,
+                    duration: duration
+                })
+            }).catch(err => console.error('记录停留时间失败:', err));
+        }
+
+        // 页面关闭时上报（可靠但可能无法发送异步请求，因为浏览器会取消）
+        window.addEventListener('beforeunload', reportStayDuration);
+        // 页面隐藏时上报（切换标签页、最小化等）
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'hidden') {
+                reportStayDuration();
+            }
+        });
+        // 注意：如果用户通过链接跳转，beforeunload 会触发，但可能无法完成 fetch；visibilitychange 更可靠。   
+    </script>
+</body>
+</html>

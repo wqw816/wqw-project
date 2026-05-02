@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>管理员后台</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .filter-bar { margin-bottom: 20px; background: #f9f9f9; padding: 15px; border-radius: 5px; }
+        .filter-bar input, .filter-bar select { margin-right: 10px; padding: 5px; }
+        .pagination { margin-top: 20px; }
+        .btn { padding: 5px 10px; text-decoration: none; background: #3498db; color: white; border-radius: 3px; }
+        .btn-danger { background: #e74c3c; }
+        .stats { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h1>管理员后台</h1>
+        <div>
+            <a href="/change_password">修改密码</a> |
+            <a href="/logout">退出登录</a>
+            <a href="/admin/logs">系统日志</a>
+        </div>
+    </div>
+
+    <!-- 电影筛选区域 -->
+    <h2>电影管理</h2>
+    <div class="filter-bar">
+        <form method="get" action="/admin">
+            <input type="text" name="title" placeholder="电影标题" value="{{ title }}">
+            <select name="genre" multiple size="5">
+                <option value="">所有类型</option>
+                {% for g in all_genres %}
+                <option value="{{ g }}" {% if g in genre %}selected{% endif %}>{{ g }}</option>
+                {% endfor %}
+            </select>
+            <select name="director">
+                <option value="">所有导演</option>
+                {% for d in all_directors %}
+                <option value="{{ d }}" {% if director == d %}selected{% endif %}>{{ d }}</option>
+                {% endfor %}
+            </select>
+            <select name="actor" multiple size="5">
+                <option value="">所有演员</option>
+                {% for a in all_actors %}
+                <option value="{{ a }}" {% if a in actor %}selected{% endif %}>{{ a }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">筛选</button>
+            <a href="/admin">重置</a>
+            <a href="/admin/movie/add" class="btn" style="margin-left: 20px;">添加电影</a>
+        </form>
+    </div>
+
+    <h2>系统日志（最近20条）</h2>
+    <table>
+        <thead>
+            <tr><th>时间</th><th>用户</th><th>操作</th><th>详情</th><th>IP</th></tr>
+        </thead>
+        <tbody>
+        {% for log in recent_logs %}
+            <tr>
+                <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td>{{ log.username }} ({{ log.user_id }})</td>
+                <td>{{ log.action }}</td>
+                <td>{{ log.details or '' }}</td>
+                <td>{{ log.ip_address }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="stats">
+        <p>📊 电影库总计：<strong>{{ total_movies }}</strong> 部</p>
+        {% if show_list %}
+            <p>🔍 筛选结果：<strong>{{ filtered_count }}</strong> 部</p>
+        {% endif %}
+    </div>
+
+    {% if show_list %}
+        <!-- 显示筛选后的电影列表 -->
+        <table>
+            <thead>
+                <tr><th>ID</th><th>标题</th><th>类型</th><th>导演</th><th>演员</th><th>操作</th></tr>
+            </thead>
+            <tbody>
+            {% for movie in movies %}
+            <tr>
+                <td>{{ movie.id }}</td>
+                <td>{{ movie.title }}</td>
+                <td>{{ movie.genres }}</td>
+                <td>{{ movie.director }}</td>
+                <td>{{ movie.actors }}</td>
+                <td>
+                    <a href="/admin/movie/edit/{{ movie.id }}?next={{ request.full_path | urlencode }}" class="btn">编辑</a>
+                    <a href="/admin/movie/delete/{{ movie.id }}?next={{ request.full_path | urlencode }}" class="btn btn-danger" onclick="return confirm('确定删除？')">删除</a>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        {% if pagination and pagination.pages > 1 %}
+        <div class="pagination">
+            {% if pagination.has_prev %}
+                <a href="{{ url_for('admin', page=pagination.prev_num, title=title, genre=genre, director=director, actor=actor) }}">上一页</a>
+            {% endif %}
+            <span>第 {{ pagination.page }} / {{ pagination.pages }} 页</span>
+            {% if pagination.has_next %}
+                <a href="{{ url_for('admin', page=pagination.next_num, title=title, genre=genre, director=director, actor=actor) }}">下一页</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    {% endif %}
+
+    <hr>
+
+    <!-- 原有统计信息保持不变 -->
+    <h2>热门搜索词</h2>
+<div style="width: 100%; max-width: 600px; margin-bottom: 30px;">
+    <canvas id="hotSearchChart"></canvas>
+</div>
+
+<h2>最活跃用户</h2>
+<div style="width: 100%; max-width: 600px; margin-bottom: 30px;">
+    <canvas id="activeUserChart"></canvas>
+</div>
+
+<h2>电影类型分布</h2>
+<div style="width: 100%; max-width: 500px; margin-bottom: 30px;">
+    <canvas id="genrePieChart"></canvas>
+</div>
+
+<!-- 用 JSON 容器存数据，VSCode 不会检查 type="application/json" -->
+<script id="hot-search-labels" type="application/json">{{ hot_labels | tojson }}</script>
+<script id="hot-search-data" type="application/json">{{ hot_data | tojson }}</script>
+<script id="active-user-labels" type="application/json">{{ user_labels | tojson }}</script>
+<script id="active-user-data" type="application/json">{{ user_data | tojson }}</script>
+<script id="genre-labels" type="application/json">{{ genre_labels | tojson }}</script>
+<script id="genre-counts" type="application/json">{{ genre_counts | tojson }}</script>
+<!-- 将后端数据传给 JS -->
+<script>
+    // 热门搜索词数据
+    const hotSearchLabels = JSON.parse(document.getElementById('hot-search-labels').textContent);
+    const hotSearchData = JSON.parse(document.getElementById('hot-search-data').textContent);
+
+    // 最活跃用户数据
+    const activeUserLabels = JSON.parse(document.getElementById('active-user-labels').textContent);
+    const activeUserData = JSON.parse(document.getElementById('active-user-data').textContent);
+    // 绘制热门搜索词条形图（横向）
+    if (hotSearchLabels.length > 0) {
+        new Chart(document.getElementById('hotSearchChart'), {
+            type: 'bar',
+            data: {
+                labels: hotSearchLabels,
+                datasets: [{
+                    label: '搜索次数',
+                    data: hotSearchData,
+                    backgroundColor: '#b88b5a',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                indexAxis: 'y',   // 横向条形图
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: '次数' }
+                    }
+                }
+            }
+        });
+    } else {
+        document.getElementById('hotSearchChart').parentNode.innerHTML = '<p>暂无搜索数据</p>';
+    }
+
+    // 绘制最活跃用户柱状图
+    if (activeUserLabels.length > 0) {
+        new Chart(document.getElementById('activeUserChart'), {
+            type: 'bar',
+            data: {
+                labels: activeUserLabels,
+                datasets: [{
+                    label: '点击次数',
+                    data: activeUserData,
+                    backgroundColor: '#5c3e2b',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        title: { display: true, text: '点击次数' },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    } else {
+        document.getElementById('activeUserChart').parentNode.innerHTML = '<p>暂无活跃用户数据</p>';
+    }
+
+        // 电影类型分布饼图
+    const genreLabels = JSON.parse(document.getElementById('genre-labels').textContent);
+    const genreCounts = JSON.parse(document.getElementById('genre-counts').textContent);
+
+    if (genreLabels.length > 0) {
+        new Chart(document.getElementById('genrePieChart'), {
+            type: 'pie',
+            data: {
+                labels: genreLabels,
+                datasets: [{
+                    data: genreCounts,
+                    backgroundColor: [
+                        '#b88b5a', '#5c3e2b', '#d4a373', '#8b5a32',
+                        '#a98467', '#6c4f3d', '#c49a6c', '#4a3623',
+                        '#e6c29a', '#7b5e47', '#c19a6b', '#8c6b4f',
+                        '#d9b382', '#5e4331', '#e0c097'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            font: { size: 12 }
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        document.getElementById('genrePieChart').parentNode.innerHTML = '<p>暂无类型数据</p>';
+    }
+</script>
+
+    <h2>用户反馈</h2>
+    <table>
+        <tr><th>ID</th><th>用户ID</th><th>搜索词</th><th>电影名</th><th>状态</th><th>时间</th><th>操作</th></tr>
+        {% for f in feedbacks %}
+        <tr>
+            <td>{{ f.id }}</td>
+            <td>{{ f.user_id }}</td>
+            <td>{{ f.search_query }}</td>
+            <td>{{ f.movie_title }}</td>
+            <td>{{ f.status }}</td>
+            <td>{{ f.created_at }}</td>
+            <td>
+                {% if f.status == 'pending' %}
+                <a href="/mark_feedback_done/{{ f.id }}">标记为已处理</a>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

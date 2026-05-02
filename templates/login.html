@@ -1,0 +1,121 @@
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <div class="error-msg" style="background:#e8f5e9; color:#2e7d32;">{{ messages[0] }}</div>
+    {% endif %}
+{% endwith %}
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 电影推荐系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #f4efe7;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .card {
+            background: #fffcf5;
+            border-radius: 32px;
+            box-shadow: 0 20px 35px -10px rgba(0,0,0,0.08);
+            padding: 2.5rem 2rem;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            border: 1px solid #e6dbc9;
+            transition: all 0.2s;
+        }
+        h1 {
+            font-size: 1.8rem;
+            color: #5c3e2b;
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+            letter-spacing: -0.3px;
+        }
+        .logo-icon {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+        }
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            margin: 8px 0;
+            border: 1px solid #d9c7ae;
+            border-radius: 48px;
+            background: #fffef9;
+            font-size: 1rem;
+            transition: 0.2s;
+            outline: none;
+        }
+        input:focus {
+            border-color: #b88b5a;
+            box-shadow: 0 0 0 3px rgba(184,139,90,0.1);
+        }
+        button {
+            width: 100%;
+            background: #b88b5a;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 48px;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-top: 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #9e6f44;
+        }
+        .links {
+            margin-top: 24px;
+            font-size: 0.9rem;
+        }
+        .links a {
+            color: #8b5a32;
+            text-decoration: none;
+            margin: 0 8px;
+        }
+        .links a:hover {
+            text-decoration: underline;
+        }
+        .error-msg {
+            color: #c47b5a;
+            background: #fff0e6;
+            padding: 8px 12px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo-icon">🎬</div>
+        <h1>欢迎回来</h1>
+        {% if error %}
+        <div class="error-msg">{{ error }}</div>
+        {% endif %}
+        <form method="post">
+            <input type="text" name="username" placeholder="用户名" required autofocus>
+            <input type="password" name="password" placeholder="密码" required>
+            <button type="submit">登录</button>
+        </form>
+        <div class="links">
+            <a href="/register">创建新账号</a>
+            <a href="/">返回首页</a>
+        </div>
+    </div>
+</body>
+</html>

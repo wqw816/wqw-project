@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>系统日志</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .pagination { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>系统日志</h1>
+    <p><a href="/admin">返回后台首页</a></p>
+    <table>
+        <thead>
+            <tr><th>ID</th><th>用户</th><th>操作</th><th>目标类型</th><th>目标ID</th><th>详情</th><th>IP</th><th>时间</th></tr>
+        </thead>
+        <tbody>
+        {% for log in logs %}
+        <tr>
+            <td>{{ log.id }}</td>
+            <td>{{ log.username }} (ID:{{ log.user_id }})</td>
+            <td>{{ log.action }}</td>
+            <td>{{ log.target_type or '' }}</td>
+            <td>{{ log.target_id or '' }}</td>
+            <td>{{ log.details or '' }}</td>
+            <td>{{ log.ip_address }}</td>
+            <td>{{ log.created_at }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <div class="pagination">
+        {% if pagination.has_prev %}
+            <a href="{{ url_for('admin_logs', page=pagination.prev_num) }}">上一页</a>
+        {% endif %}
+        <span>第 {{ pagination.page }} / {{ pagination.pages }} 页</span>
+        {% if pagination.has_next %}
+            <a href="{{ url_for('admin_logs', page=pagination.next_num) }}">下一页</a>
+        {% endif %}
+    </div>
+</body>
+</html>
