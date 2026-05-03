@@ -32,7 +32,8 @@ app = Flask(__name__)
 # 数据库配置：优先使用环境变量（Railway），本地开发时保留默认值
 DATABASE_URL = os.environ.get('DATABASE_URL', 'mysql+pymysql://root:150437@localhost/movie_db')
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
-
+DATABASE_URL = os.environ.get('DATABASE_URL', 'mysql+pymysql://root:150437@localhost/movie_db')
+print(f"🚀 当前数据库连接：{DATABASE_URL.replace(DATABASE_URL.split('@')[0].split(':')[-1], '****')}")  # 隐藏密码
 # 为 Aiven 云端 MySQL 强制开启 SSL (无需证书)
 if 'DATABASE_URL' in os.environ:
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
