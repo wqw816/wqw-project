@@ -1470,4 +1470,4 @@ if __name__ == '__main__':
         pearson_cf.build()
         # 隐式协同过滤模型（每次启动重建）
         implicit_cf = ImplicitCF()   # 这里会自动调用 build()
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
