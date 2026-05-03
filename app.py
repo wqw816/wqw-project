@@ -29,7 +29,17 @@ TMDB_API_KEY = '5ed7cbe0bb8d1a76132ccc8a453ec377'
 app = Flask(__name__)
 
 # 数据库配置
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:150437@localhost/movie_db'
+# 数据库配置：优先使用环境变量（Railway），本地开发时保留默认值
+DATABASE_URL = os.environ.get('DATABASE_URL', 'mysql+pymysql://root:150437@localhost/movie_db')
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+
+# 为 Aiven 云端 MySQL 强制开启 SSL (无需证书)
+if 'DATABASE_URL' in os.environ:
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'connect_args': {
+            'ssl': {'fake_flag_to_enable_tls': True}
+        }
+    }
 print("正在使用的连接字符串:", app.config['SQLALCHEMY_DATABASE_URI'])
 print("DEBUG URI:", app.config['SQLALCHEMY_DATABASE_URI'])
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
