@@ -526,9 +526,11 @@ pearson_cf = PearsonCF(top_k=1000)   # 可调整采样数量
 @app.before_request
 def setup_recommender():
     if not hasattr(app, 'recommender_initialized'):
-        if not recommender.load():
-            with app.app_context():
-                recommender.build()   # 直接调用无参 build
+        # 检查模型文件是否存在且非空
+        if os.path.exists('content_based_model.pkl') and os.path.getsize('content_based_model.pkl') > 0:
+            recommender.load()
+        else:
+            print("跳过内容模型加载（文件不存在或为空）")
         app.recommender_initialized = True
 
 # 相似电影接口
