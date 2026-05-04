@@ -27,7 +27,9 @@ TMDB_API_KEY = '5ed7cbe0bb8d1a76132ccc8a453ec377'
 # 两个认证方式选一个即可，推荐用 API Key
 
 app = Flask(__name__)
-
+# 安全的占位对象，避免未定义错误
+implicit_cf = None
+pearson_cf = None
 # 数据库配置
 # 数据库配置：优先使用环境变量（Railway），本地开发时保留默认值
 DATABASE_URL = os.environ.get('DATABASE_URL', 'mysql+pymysql://root:150437@localhost/movie_db')
@@ -363,21 +365,19 @@ class ContentBasedRecommender:
         print(f"✅ 特征加权模型构建完成！权重：类型={weight_genres}, 导演={weight_director}, 演员={weight_actors}")
     
     def load(self):
+        import os
+        # 如果文件不存在或为空，直接跳过，绝不触发 pickle 崩溃
         if not os.path.exists('content_based_model.pkl') or os.path.getsize('content_based_model.pkl') == 0:
             print("内容模型文件不存在或为空，跳过加载")
             return False
         with open('content_based_model.pkl', 'rb') as f:
             data = pickle.load(f)
-        if os.path.exists('content_based_model.pkl'):
-            with open('content_based_model.pkl', 'rb') as f:
-                data = pickle.load(f)
-                self.movie_id_to_idx = data.get('movie_id_to_idx')
-                self.movies_df = data['movies_df']
-                self.similarity_matrix = data['similarity_matrix']
-                self.vectorizers = data.get('vectorizers')  # 兼容旧模型
-                print("模型加载成功")
-                return True
-        return False
+        self.movies_df = data['movies_df']
+        self.similarity_matrix = data['similarity_matrix']
+        self.vectorizers = data.get('vectorizers')
+        self.movie_id_to_idx = data.get('movie_id_to_idx')
+        print("✅ 内容推荐模型加载成功")
+        return True
     
     def recommend(self, movie_id, top_n=10):
         """返回与 movie_id 最相似的 top_n 部电影（不包括自身）"""
@@ -531,7 +531,11 @@ pearson_cf = PearsonCF(top_k=1000)   # 可调整采样数量
 @app.before_request
 def setup_recommender():
     if not hasattr(app, 'recommender_initialized'):
-        print("云端极简模式：跳过所有推荐模型初始化")
+        # 只有在文件完好无损时才加载
+        if os.path.exists('content_based_model.pkl') and os.path.getsize('content_based_model.pkl') > 0:
+            recommender.load()
+        else:
+            print("云端模式：内容推荐模型准备就绪（无本地模型文件）")
         app.recommender_initialized = True
 
 # 相似电影接口
