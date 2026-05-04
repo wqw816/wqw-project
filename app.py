@@ -532,6 +532,7 @@ pearson_cf = PearsonCF(top_k=1000)   # 可调整采样数量
 # 在应用启动时加载或构建模型
 @app.before_request
 def setup_recommender():
+    print(f"CLOUD_MODE = {CLOUD_MODE}")  # 临时调试
     if CLOUD_MODE:
         return  # 云端模式下，直接跳过，什么都不做
     if not hasattr(app, 'recommender_initialized'):
