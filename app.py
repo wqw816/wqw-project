@@ -32,8 +32,7 @@ app = Flask(__name__)
 # 数据库配置：优先使用环境变量（Railway），本地开发时保留默认值
 DATABASE_URL = os.environ.get('DATABASE_URL', 'mysql+pymysql://root:150437@localhost/movie_db')
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
-DATABASE_URL = os.environ.get('DATABASE_URL', 'mysql+pymysql://root:150437@localhost/movie_db')
-print(f"🚀 当前数据库连接：{DATABASE_URL.replace(DATABASE_URL.split('@')[0].split(':')[-1], '****')}")  # 隐藏密码
+
 # 为 Aiven 云端 MySQL 强制开启 SSL (无需证书)
 if 'DATABASE_URL' in os.environ:
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
@@ -41,8 +40,11 @@ if 'DATABASE_URL' in os.environ:
             'ssl': {'fake_flag_to_enable_tls': True}
         }
     }
-print("正在使用的连接字符串:", app.config['SQLALCHEMY_DATABASE_URI'])
-print("DEBUG URI:", app.config['SQLALCHEMY_DATABASE_URI'])
+
+# 启动时打印数据库连接信息（密码已隐藏）
+_DB_DISPLAY = DATABASE_URL.replace(DATABASE_URL.split('@')[0].split(':')[-1], '****') if '@' in DATABASE_URL else DATABASE_URL
+print(f"🚀 数据库连接：{_DB_DISPLAY}")
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'sdjfksdjhfkjsdhfkj'
 
@@ -279,6 +281,11 @@ class ContentBasedRecommender:
         self.movie_id_to_idx = None
     
     def build(self):
+        if os.path.exists('content_based_model.pkl'):
+            self.load()
+            print("跳过内容模型重建（无.pkl文件）")
+            return
+        # 原来重建代码暂时不执行，防止内存爆炸
         """从数据库读取电影数据，分别对类型、导演、演员进行向量化并加权合并"""
         from sqlalchemy import text
         from sklearn.feature_extraction.text import TfidfVectorizer
@@ -396,6 +403,10 @@ class PearsonCF:
         self.id_to_idx = None
 
     def build(self):
+        if os.path.exists(self.model_path):
+            # 加载已有文件
+            print("跳过皮尔逊模型重建（无.pkl文件）")
+            return
         # 如果已有保存的模型，直接加载
         if os.path.exists(self.model_path):
             with open(self.model_path, 'rb') as f:
@@ -472,6 +483,9 @@ class ImplicitCF:
         self.build()
 
     def build(self):
+        if not os.path.exists(self.model_path):
+            print("跳过隐式协同过滤重建（无模型文件）")
+            return
         """从数据库构建新模型并保存"""
         implicit_df = pd.read_sql('SELECT user_id, movie_id, weight FROM implicit_ratings', db.engine)
         if implicit_df.empty:
