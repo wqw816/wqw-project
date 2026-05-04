@@ -25,7 +25,9 @@ FORCE_REBUILD_IMPLICIT = True   # 可根据需要修改
 
 TMDB_API_KEY = '5ed7cbe0bb8d1a76132ccc8a453ec377'
 # 两个认证方式选一个即可，推荐用 API Key
-
+# 强制云端模式：请在 Railway 的 Variables 中添加 CLOUD_MODE=1
+# 如果检测到此变量，将完全跳过推荐模型的加载，避免内存和文件错误
+CLOUD_MODE = os.environ.get('CLOUD_MODE', '0') == '1'
 app = Flask(__name__)
 # 安全的占位对象，避免未定义错误
 implicit_cf = None
@@ -530,6 +532,8 @@ pearson_cf = PearsonCF(top_k=1000)   # 可调整采样数量
 # 在应用启动时加载或构建模型
 @app.before_request
 def setup_recommender():
+    if CLOUD_MODE:
+        return  # 云端模式下，直接跳过，什么都不做
     if not hasattr(app, 'recommender_initialized'):
         # 只有在文件完好无损时才加载
         if os.path.exists('content_based_model.pkl') and os.path.getsize('content_based_model.pkl') > 0:
