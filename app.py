@@ -410,6 +410,9 @@ class PearsonCF:
         self.id_to_idx = None
 
     def build(self):
+        if CLOUD_MODE:
+            print("跳过皮尔逊模型构建（云端模式）")
+            return
         if os.path.exists(self.model_path):
             # 加载已有文件
             print("跳过皮尔逊模型重建（无.pkl文件）")
@@ -490,6 +493,9 @@ class ImplicitCF:
         self.build()
 
     def build(self):
+        if CLOUD_MODE:
+            print("跳过隐式模型构建（云端模式）")
+            return
         if not os.path.exists(self.model_path):
             print("跳过隐式协同过滤重建（无模型文件）")
             return
