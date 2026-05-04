@@ -363,6 +363,11 @@ class ContentBasedRecommender:
         print(f"✅ 特征加权模型构建完成！权重：类型={weight_genres}, 导演={weight_director}, 演员={weight_actors}")
     
     def load(self):
+        if not os.path.exists('content_based_model.pkl') or os.path.getsize('content_based_model.pkl') == 0:
+            print("内容模型文件不存在或为空，跳过加载")
+            return False
+        with open('content_based_model.pkl', 'rb') as f:
+            data = pickle.load(f)
         if os.path.exists('content_based_model.pkl'):
             with open('content_based_model.pkl', 'rb') as f:
                 data = pickle.load(f)
@@ -526,11 +531,7 @@ pearson_cf = PearsonCF(top_k=1000)   # 可调整采样数量
 @app.before_request
 def setup_recommender():
     if not hasattr(app, 'recommender_initialized'):
-        # 检查模型文件是否存在且非空
-        if os.path.exists('content_based_model.pkl') and os.path.getsize('content_based_model.pkl') > 0:
-            recommender.load()
-        else:
-            print("跳过内容模型加载（文件不存在或为空）")
+        print("云端极简模式：跳过所有推荐模型初始化")
         app.recommender_initialized = True
 
 # 相似电影接口
@@ -1492,9 +1493,10 @@ def admin_logs():
     return render_template('admin_logs.html', logs=paginated.items, pagination=paginated)
 
 if __name__ == '__main__':
-    with app.app_context():
-        # 协同过滤模型
-        pearson_cf.build()
-        # 隐式协同过滤模型（每次启动重建）
-        implicit_cf = ImplicitCF()   # 这里会自动调用 build()
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
+    # 云端极简模式：不加载任何推荐模型，确保服务永不崩溃
+    # with app.app_context():
+    #     pearson_cf.build()
+    #     implicit_cf = ImplicitCF()
+    import os
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
